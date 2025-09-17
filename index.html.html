@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Musime — YouTube + Local Music Player</title>
+  <style>
+    body{
+      margin:0;padding:0;font-family:Inter,system-ui;
+      background:linear-gradient(135deg,#2b6cb0,#6b46c1,#f687b3);
+      color:#fff;display:flex;justify-content:center;align-items:center;
+      min-height:100vh;
+    }
+    .app{max-width:960px;width:100%;background:rgba(0,0,0,0.4);backdrop-filter:blur(6px);
+      border-radius:16px;padding:16px;box-shadow:0 8px 20px rgba(0,0,0,0.4)}
+    h1{margin:0 0 12px;font-size:24px}
+    .search-box{display:flex;gap:8px;margin-bottom:12px}
+    input[type=text]{flex:1;padding:8px;border-radius:8px;border:0}
+    button{padding:8px 12px;border:0;border-radius:8px;background:#6b46c1;color:#fff;cursor:pointer}
+    button:hover{background:#805ad5}
+    .results{max-height:300px;overflow:auto;margin:12px 0;}
+    .result{display:flex;gap:8px;align-items:center;margin-bottom:8px;cursor:pointer;padding:6px;border-radius:8px}
+    .result:hover{background:rgba(255,255,255,0.1)}
+    .result img{width:80px;height:60px;object-fit:cover;border-radius:6px}
+    .player{margin-top:16px;}
+    
+    /* Mood survey styles */
+    .mood-survey {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+    .mood-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .mood-option {
+      padding: 12px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .mood-option:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+    .mood-option.selected {
+      background: #6b46c1;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+    }
+    .mood-icon {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    
+    /* Feedback section */
+    .feedback {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      display: none;
+    }
+    .feedback-buttons {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .feedback-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+    }
+    .feedback-btn.selected {
+      background: #6b46c1;
+    }
+    
+    /* Save MP3 button */
+    .save-mp3 {
+      margin-top: 15px;
+      text-align: center;
+      display: none;
+    }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .tab.active {
+      opacity: 1;
+      border-bottom: 2px solid #fff;
+    }
+    
+    /* Content sections */
+    .content-section {
+      display: none;
+    }
+    .content-section.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Musime 🎵</h1>
+  
+  <div class="tabs">
+    <div class="tab active" data-tab="search">Search</div>
+    <div class="tab" data-tab="mood">Mood Match</div>
+  </div>
+  
+  <!-- Search Tab -->
+  <div class="content-section active" id="search-section">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search YouTube music...">
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="results" id="results"></div>
+  </div>
+  
+  <!-- Mood Tab -->
+  <div class="content-section" id="mood-section">
+    <div class="mood-survey">
+      <h3>How are you feeling today?</h3>
+      <div class="mood-options">
+        <div class="mood-option" data-mood="sadness">
+          <div class="mood-icon">😢</div>
+          <div>Sadness</div>
+        </div>
+        <div class="mood-option" data-mood="happiness">
+          <div class="mood-icon">😄</div>
+          <div>Happiness</div>
+        </div>
+        <div class="mood-option" data-mood="fear">
+          <div class="mood-icon">😨</div>
+          <div>Fear</div>
+        </div>
+        <div class="mood-option" data-mood="anger">
+          <div class="mood-icon">😠</div>
+          <div>Anger</div>
+        </div>
+        <div class="mood-option" data-mood="surprise">
+          <div class="mood-icon">😲</div>
+          <div>Surprise</div>
+        </div>
+        <div class="mood-option" data-mood="disgust">
+          <div class="mood-icon">🤢</div>
+          <div>Disgust</div>
+        </div>
+      </div>
+      <button id="findMusicBtn" disabled>Find Music for My Mood</button>
+    </div>
+    
+    <div class="results" id="mood-results"></div>
+    
+    <div class="feedback" id="feedback">
+      <h3>Did this music match your mood?</h3>
+      <div class="feedback-buttons">
+        <button class="feedback-btn" data-feedback="match-yes">Yes</button>
+        <button class="feedback-btn" data-feedback="match-no">No</button>
+      </div>
+      
+      <h3>Did it help release your stress?</h3>
+      <div class="feedback-buttons">
+        <button class="feedback-btn" data-feedback="stress-yes">Yes</button>
+        <button class="feedback-btn" data-feedback="stress-no">No</button>
+      </div>
+      
+      <div class="save-mp3">
+        <button id="saveMp3Btn">Save as MP3</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="player">
+    <div id="player"></div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  let player;
+  let currentVideoId = '';
+  let selectedMood = '';
+  const apiKey = "AIzaSyBTGChD2WKbNxvS336GNaDnHPVWxj8RcME"; // <-- Replace with your API key
+
+  // Mood to search term mappings
+  const moodKeywords = {
+    sadness: ["sad music", "melancholy", "emotional music", "blue songs"],
+    happiness: ["happy music", "upbeat songs", "joyful music", "feel good songs"],
+    fear: ["calming music", "peaceful music", "soothing sounds", "anxiety relief music"],
+    anger: ["angry music", "heavy metal", "intense music", "powerful songs"],
+    surprise: ["surprising music", "unexpected songs", "eclectic mix", "unique music"],
+    disgust: ["cleansing music", "pure tones", "refreshing songs", "renewal music"]
+  };
+
+  // Load IFrame Player
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+      height: '360', 
+      width: '640', 
+      videoId: '',
+      playerVars: { 
+        'playsinline': 1,
+        'modestbranding': 1,
+        'rel': 0
+      },
+      events: {
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  }
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+      
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab + '-section').classList.add('active');
+    });
+  });
+
+  // Mood selection
+  document.querySelectorAll('.mood-option').forEach(option => {
+    option.addEventListener('click', () => {
+      document.querySelectorAll('.mood-option').forEach(o => o.classList.remove('selected'));
+      option.classList.add('selected');
+      selectedMood = option.dataset.mood;
+      document.getElementById('findMusicBtn').disabled = false;
+    });
+  });
+
+  // Find music based on mood
+  document.getElementById('findMusicBtn').addEventListener('click', findMoodMusic);
+
+  async function findMoodMusic() {
+    if (!selectedMood) return;
+    
+    const keywords = moodKeywords[selectedMood];
+    const randomKeyword = keywords[Math.floor(Math.random() * keywords.length)];
+    
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(randomKeyword)}&key=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderMoodResults(data.items);
+  }
+
+  function renderMoodResults(items) {
+    const resultsEl = document.getElementById('mood-results');
+    resultsEl.innerHTML = '';
+    
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'result';
+      div.innerHTML = `<img src="${item.snippet.thumbnails.default.url}"/> <div><strong>${item.snippet.title}</strong><br><small>${item.snippet.channelTitle}</small></div>`;
+      div.addEventListener('click', () => {
+        currentVideoId = item.id.videoId;
+        player.loadVideoById(item.id.videoId);
+        document.getElementById('feedback').style.display = 'block';
+        document.querySelector('.save-mp3').style.display = 'block';
+      });
+      resultsEl.appendChild(div);
+    });
+  }
+
+  // Search YouTube
+  document.getElementById('searchBtn').addEventListener('click', searchVideos);
+  document.getElementById('searchInput').addEventListener('keypress', e => { 
+    if(e.key === 'Enter') searchVideos(); 
+  });
+
+  async function searchVideos(){
+    const q = document.getElementById('searchInput').value.trim();
+    if(!q) return;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    renderResults(data.items);
+  }
+
+  function renderResults(items){
+    const resultsEl = document.getElementById('results');
+    resultsEl.innerHTML = '';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'result';
+      div.innerHTML = `<img src="${item.snippet.thumbnails.default.url}"/> <div><strong>${item.snippet.title}</strong><br><small>${item.snippet.channelTitle}</small></div>`;
+      div.addEventListener('click', () => {
+        currentVideoId = item.id.videoId;
+        player.loadVideoById(item.id.videoId);
+      });
+      resultsEl.appendChild(div);
+    });
+  }
+
+  // Feedback handling
+  document.querySelectorAll('.feedback-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove selected class from all buttons in the same group
+      btn.parentElement.querySelectorAll('.feedback-btn').forEach(b => {
+        b.classList.remove('selected');
+      });
+      
+      // Add selected class to clicked button
+      btn.classList.add('selected');
+      
+      // Check if both feedback questions have been answered
+      const matchSelected = document.querySelector('[data-feedback^="match-"].selected');
+      const stressSelected = document.querySelector('[data-feedback^="stress-"].selected');
+      
+      if (matchSelected && stressSelected) {
+        // Here you would typically send this feedback to a server
+        console.log('Feedback received:', {
+          videoId: currentVideoId,
+          mood: selectedMood,
+          matched: matchSelected.dataset.feedback === 'match-yes',
+          stressRelief: stressSelected.dataset.feedback === 'stress-yes'
+        });
+        
+        alert('Thank you for your feedback!');
+      }
+    });
+  });
+
+  // Save as MP3 functionality
+  document.getElementById('saveMp3Btn').addEventListener('click', () => {
+    if (!currentVideoId) {
+      alert('No video selected');
+      return;
+    }
+    
+    // In a real implementation, this would connect to a backend service
+    // that converts YouTube videos to MP3. This is just a simulation.
+    alert(`This would normally save the video as MP3. Video ID: ${currentVideoId}\n\nIn a real implementation, this would connect to a backend service that converts YouTube videos to MP3.`);
+  });
+
+  // Player state change handler
+  function onPlayerStateChange(event) {
+    // You can add additional handling for player state changes here
+  }
+</script>
+</body>
+</html>
